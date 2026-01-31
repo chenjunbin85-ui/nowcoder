@@ -41,6 +41,12 @@
         FROM user WHERE username = #{name}
     </select>
 
+    <select id="selectByEmail" resultMap="userResultMap">
+        SELECT
+        <include refid="selectColumns"/>
+        FROM user WHERE email = #{email}
+    </select>
+
     <!-- 修复：使用 insertColumns（不包含id） -->
     <insert id="create" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO user (

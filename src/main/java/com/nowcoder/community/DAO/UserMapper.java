@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 public interface UserMapper {
     User selectById(int id);
     User selectByName(String name);
+    User selectByEmail(String email);
     int create(User user);
 
     // ❌ 错误的：XML中的updateStatus需要两个参数

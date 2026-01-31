@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.nowcoder.community.DAO.DiscussPostMapper">
+    <sql id="selectFields">
+        id,user_id,title,content,type,status,create_time,comment_count,score
+    </sql>
+<!--    userId 用来个人主页查询本人的discussPost和discussPost的数量-->
+    <select id="selectDiscussPost">
+        select <include refid="selectFields"/>
+        from discuss_post
+        where status!=2
+        <if test="userId!=0">
+            and user_id = #{userId}
+        </if>
+        order by type desc,create_time desc
+        limit #{offset},#{limit}
+    </select>
+
+    <select id="selectDiscussPostRows">
+        select count(id)
+        from discuss_post
+        where status!=2
+        <if test="userId!=0">
+            and user_id = #{userId}
+        </if>
+    </select>
+
+</mapper>

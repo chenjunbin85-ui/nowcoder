@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>调试页面</title>
+    <style>
+        .debug-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .data-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: white;
+            border: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+<div class="debug-info">
+    <h3>调试信息</h3>
+    <p>数据数量: <span th:text="${#lists.size(discussPosts)}"></span></p>
+</div>
+
+<div th:each="item, iterStat : ${discussPosts}">
+    <div class="data-item">
+        <h4>第 <span th:text="${iterStat.index + 1}"></span> 条数据</h4>
+        <p><strong>帖子信息:</strong></p>
+        <pre th:text="${item.post}"></pre>
+
+        <p><strong>用户信息:</strong></p>
+        <div th:if="${item.user != null}">
+            <p>用户ID: <span th:text="${item.user.id}"></span></p>
+            <p>用户名: <span th:text="${item.user.username}"></span></p>
+            <p>头像URL: <span th:text="${item.user.headerUrl}"></span></p>
+            <img th:src="${item.user.headerUrl}" alt="头像" style="width:50px;height:50px;">
+        </div>
+        <div th:if="${item.user == null}">
+            <p style="color: red;">用户信息为空!</p>
+        </div>
+    </div>
+</div>
+
+<div th:if="${#lists.isEmpty(discussPosts)}" class="alert alert-warning">
+    没有数据!
+</div>
+</body>
+</html>

@@ -1,20 +1,46 @@
 package com.nowcoder.community.Controller;
 
+import com.google.code.kaptcha.impl.DefaultKaptcha;
+import com.nowcoder.community.DAO.LoginTicketMapper;
+import com.nowcoder.community.entity.LoginTicket;
 import com.nowcoder.community.entity.User;
 import com.nowcoder.community.service.UserService;
+import com.nowcoder.community.util.CommunityConstant;
+import io.micrometer.common.util.StringUtils;
+import jakarta.servlet.http.Cookie;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 
+import javax.imageio.ImageIO;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
 @Controller
-public class LoginController {
+public class LoginController implements CommunityConstant {
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private DefaultKaptcha producer;
+
+    @Value("${server.servlet.context-path}")
+    private String contextPath;
+
+    @Autowired
+    private LoginTicketMapper loginTicketMapper;
+
     // GET 请求：显示注册页面
     @RequestMapping(path="/register", method = RequestMethod.GET)
     public String getRegisterPage() {
@@ -47,7 +73,72 @@ public class LoginController {
 
     // POST 请求：处理登录表单提交
     @RequestMapping(path="/login",method = RequestMethod.POST)
-    public String getLoginPage(Model model, User user) {
-        return "site/login";
+    public String getLoginPage(String username, String password, String code,boolean rememberMe,Model model, HttpServletResponse response, HttpSession session) {
+        String kaptcha = (String) session.getAttribute("kaptcha");
+        if (StringUtils.isEmpty(kaptcha) || StringUtils.isBlank(code) || !kaptcha.equalsIgnoreCase(code)) {
+            model.addAttribute("codeMsg","验证码不正确");
+            return "site/login";
+        }
+        int expired = rememberMe ? CommunityConstant.REMEMBER_EXPIRED_SECONDS: CommunityConstant.DEFAULT_EXPIRED_SECONDS;
+        Map<String, Object> check = userService.login(username, password, expired);
+        //将cookies发送给客户端
+        if (check.containsKey("ticket")) {
+            Cookie cookie = new Cookie("ticket", check.get("ticket").toString());
+            cookie.setPath(contextPath);
+            cookie.setMaxAge(expired);
+            response.addCookie(cookie);
+            return "redirect:/index";
+        }
+        else{
+            model.addAttribute("usernameMsg",check.get("usernameMessage"));
+            model.addAttribute("passwordMsg",check.get("passwordMessage"));
+            return "site/login";
+        }
+
+    }
+
+    @RequestMapping(path = "/logout", method = RequestMethod.GET)
+    public String logout(@CookieValue(value = "ticket", required = false) String ticket,
+                         HttpSession session,
+                         HttpServletResponse response) {
+
+        // 1. 验证 ticket 是否存在
+        if (ticket != null && !ticket.isEmpty()) {
+            // 2. 更新数据库中 ticket 的状态为无效
+            LoginTicket loginTicket = loginTicketMapper.selectLoginTicketByTicket(ticket);
+            if (loginTicket != null) {
+                loginTicket.setStatus(1); // 1 表示无效
+                loginTicketMapper.updateStatus(loginTicket);
+            }
+
+            // 3. 清除客户端 Cookie
+            Cookie cookie = new Cookie("ticket", null);
+            cookie.setPath("/");
+            cookie.setMaxAge(0); // 立即过期
+            response.addCookie(cookie);
+        }
+
+        // 4. 清除 Session 中的用户信息
+        session.removeAttribute("user");
+        session.invalidate(); // 可选：使 session 失效
+
+        // 5. 重定向到登录页面（或首页）
+        return "redirect:/login";
+    }
+
+    @RequestMapping(path="/kaptcha",method = RequestMethod.GET)
+    public void getKaptcha(HttpServletResponse response, HttpSession session) {
+        String text = producer.createText();
+        BufferedImage image = producer.createImage(text);
+        //验证码存入session
+        session.setAttribute("kaptcha", text);
+        //图片输出给浏览器
+        response.setContentType("image/png");
+        try{
+            OutputStream os=response.getOutputStream();
+            ImageIO.write(image,"png",os);
+        }catch (IOException e){
+            System.out.println("响应验证码失败"+e.getMessage());
+        }
     }
 }

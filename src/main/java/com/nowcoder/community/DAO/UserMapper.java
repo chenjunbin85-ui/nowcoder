@@ -16,7 +16,8 @@ public interface UserMapper {
 
     // ✅ 正确的：需要两个参数
     int updateStatus(@Param("id") int id, @Param("status") int status);
-
+    int updatePassword(@Param("id") int id, @Param("password") String password);
+    int updateHeadUrl(@Param("id") int id, @Param("headUrl") String headUrl);
     int deleteByName(String name);
     int deleteById(int id);
 }

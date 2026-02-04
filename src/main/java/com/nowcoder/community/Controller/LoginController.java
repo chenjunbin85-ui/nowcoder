@@ -73,7 +73,7 @@ public class LoginController implements CommunityConstant {
 
     // POST 请求：处理登录表单提交
     @RequestMapping(path="/login",method = RequestMethod.POST)
-    public String getLoginPage(String username, String password, String code,boolean rememberMe,Model model, HttpServletResponse response, HttpSession session) {
+    public String getLoginPage(String username, String password, String code,@RequestParam(value = "rememberme")boolean rememberMe,Model model, HttpServletResponse response, HttpSession session) {
         String kaptcha = (String) session.getAttribute("kaptcha");
         if (StringUtils.isEmpty(kaptcha) || StringUtils.isBlank(code) || !kaptcha.equalsIgnoreCase(code)) {
             model.addAttribute("codeMsg","验证码不正确");
@@ -94,35 +94,43 @@ public class LoginController implements CommunityConstant {
             model.addAttribute("passwordMsg",check.get("passwordMessage"));
             return "site/login";
         }
-
     }
 
     @RequestMapping(path = "/logout", method = RequestMethod.GET)
     public String logout(@CookieValue(value = "ticket", required = false) String ticket,
-                         HttpSession session,
                          HttpServletResponse response) {
 
         // 1. 验证 ticket 是否存在
         if (ticket != null && !ticket.isEmpty()) {
-            // 2. 更新数据库中 ticket 的状态为无效
+            // 2. 从数据库中获取登录凭证
             LoginTicket loginTicket = loginTicketMapper.selectLoginTicketByTicket(ticket);
+
             if (loginTicket != null) {
-                loginTicket.setStatus(1); // 1 表示无效
+                // 3. 更新数据库中 ticket 的状态为无效（1表示无效）
+                loginTicket.setStatus(1);
                 loginTicketMapper.updateStatus(loginTicket);
+
+                System.out.println("用户ID: " + loginTicket.getUserId() + " 已登出，ticket: " + ticket);
+            } else {
+                System.out.println("登出时未找到有效的ticket: " + ticket);
             }
 
-            // 3. 清除客户端 Cookie
+            // 4. 清除客户端 Cookie
             Cookie cookie = new Cookie("ticket", null);
-            cookie.setPath("/");
+            cookie.setPath(contextPath != null ? contextPath : "/");
             cookie.setMaxAge(0); // 立即过期
             response.addCookie(cookie);
+
+            // 5. 可选：添加一个额外的Cookie清除，确保所有可能的路径都被清除
+            Cookie cookie2 = new Cookie("ticket", null);
+            cookie2.setPath("/");
+            cookie2.setMaxAge(0);
+            response.addCookie(cookie2);
+        } else {
+            System.out.println("登出时未找到ticket Cookie");
         }
 
-        // 4. 清除 Session 中的用户信息
-        session.removeAttribute("user");
-        session.invalidate(); // 可选：使 session 失效
-
-        // 5. 重定向到登录页面（或首页）
+        // 6. 重定向到登录页面（或首页）
         return "redirect:/login";
     }
 

@@ -64,6 +64,18 @@
         WHERE id = #{id}
     </update>
 
+    <update id="updatePassword">
+        UPDATE user
+        SET password = #{password}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateHeadUrl">
+    UPDATE user
+    SET header_url = #{headUrl}
+    WHERE id = #{id}
+    </update>
+
     <delete id="deleteById">
         DELETE FROM user WHERE id = #{id}
     </delete>
